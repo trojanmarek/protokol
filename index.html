@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="SUPTel Protokol">
+<title>SUPTel – Předávací protokol</title>
+
+<style>
+  :root {
+    --blue: #004288;
+    --yellow: #FFD500;
+    --light-blue: #e8f0f8;
+    --border: #b0bec5;
+    --text: #1a1a1a;
+    --label: #004288;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Calibri, 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: var(--text); font-size: 16px; }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    background: var(--blue);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+  .topbar .logo-text { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
+  .topbar .logo-text span { color: var(--yellow); }
+  .topbar .subtitle { font-size: 11px; opacity: 0.8; }
+  .topbar .btn-settings {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; padding: 16px; }
+  .screen.active { display: block; }
+
+  /* ── CARDS ── */
+  .card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,66,136,0.1);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .card-header {
+    background: var(--blue);
+    color: white;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .card-body { padding: 14px 16px; }
+
+  /* ── FORM FIELDS ── */
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--label);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .field input, .field textarea, .field select {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: Calibri, Arial, sans-serif;
+    font-size: 15px;
+    color: var(--text);
+    background: white;
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  .field input:focus, .field textarea:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(0,66,136,0.1);
+  }
+  .field textarea { resize: vertical; min-height: 80px; }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; }
+
+  /* ── TYP ÚKONU ── */
+  .typ-ukonu { display: flex; gap: 8px; flex-wrap: wrap; }
+  .typ-btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 10px 8px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    background: white;
+    font-size: 14px;
+    font-family: Calibri, Arial, sans-serif;
+    color: #555;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.18s;
+  }
+  .typ-btn.active {
+    border-color: var(--blue);
+    background: var(--blue);
+    color: white;
+    font-weight: 700;
+  }
+  .field.jine-text { margin-top: 8px; display: none; }
+  .field.jine-text.visible { display: block; }
+
+  /* ── ZAŘÍZENÍ TABLE ── */
+  .zarizeni-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .zarizeni-table th {
+    background: var(--light-blue);
+    color: var(--blue);
+    font-weight: 700;
+    padding: 8px 6px;
+    border: 1px solid #cdd9e8;
+    text-align: center;
+    font-size: 11px;
+  }
+  .zarizeni-table td { padding: 4px 4px; border: 1px solid #cdd9e8; }
+  .zarizeni-table input {
+    width: 100%;
+    border: none;
+    padding: 6px 4px;
+    font-family: Calibri, Arial, sans-serif;
+    font-size: 13px;
+    background: transparent;
+    outline: none;
+  }
+  .zarizeni-table input:focus { background: #fffde7; border-radius: 4px; }
+  .add-row-btn {
+    margin-top: 8px;
+    background: var(--light-blue);
+    border: 1.5px dashed var(--blue);
+    color: var(--blue);
+    border-radius: 8px;
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: Calibri, Arial, sans-serif;
+  }
+  .del-row-btn {
+    background: none;
+    border: none;
+    color: #e53935;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+  }
+
+  /* ── PODPISY ── */
+  .canvas-wrap {
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fafafa;
+    position: relative;
+  }
+  canvas { display: block; touch-action: none; }
+  .canvas-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #ccc;
+    font-size: 14px;
+    pointer-events: none;
+    text-align: center;
+  }
+  .sig-btns { display: flex; gap: 8px; margin-top: 8px; }
+  .sig-btn {
+    flex: 1;
+    padding: 9px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: white;
+    font-size: 13px;
+    font-family: Calibri, Arial, sans-serif;
+    cursor: pointer;
+    color: var(--text);
+  }
+  .sig-btn.primary { background: var(--blue); color: white; border-color: var(--blue); font-weight: 700; }
+  .sig-btn.danger { border-color: #e53935; color: #e53935; }
+
+  /* ── ACTION BUTTONS ── */
+  .action-bar {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    border-top: 1px solid #e0e0e0;
+    padding: 12px 16px;
+    display: flex;
+    gap: 10px;
+    z-index: 50;
+  }
+  .btn-main {
+    flex: 1;
+    padding: 14px;
+    border-radius: 10px;
+    border: none;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: Calibri, Arial, sans-serif;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn-main:active { opacity: 0.8; }
+  .btn-generate { background: var(--blue); color: white; }
+  .btn-reset { background: #e0e0e0; color: #555; flex: 0 0 auto; width: 52px; font-size: 20px; }
+
+  /* ── SETTINGS ── */
+  .settings-info {
+    background: var(--light-blue);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 13px;
+    color: var(--blue);
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .saved-sig-preview {
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    background: white;
+    margin-bottom: 8px;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .saved-sig-preview img { max-height: 80px; max-width: 100%; }
+  .saved-sig-preview .no-sig { color: #bbb; font-size: 13px; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #323232;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 24px;
+    font-size: 14px;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 999;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── NAV TABS ── */
+  .nav-tabs {
+    display: flex;
+    background: white;
+    border-bottom: 2px solid var(--blue);
+    margin-bottom: 0;
+  }
+  .nav-tab {
+    flex: 1;
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #888;
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-family: Calibri, Arial, sans-serif;
+    transition: color 0.2s;
+  }
+  .nav-tab.active { color: var(--blue); border-bottom: 3px solid var(--blue); margin-bottom: -2px; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div>
+    <div class="logo-text">SUP<span>Tel</span><sup style="font-size:10px;color:#FFD500">®</sup></div>
+    <div class="subtitle">Předávací protokol</div>
+  </div>
+  <button class="btn-settings" onclick="showSettings()">⚙ Nastavení</button>
+</div>
+
+<!-- NAV TABS -->
+<div class="nav-tabs">
+  <button class="nav-tab active" id="tab-form" onclick="switchTab('form')">📋 Protokol</button>
+  <button class="nav-tab" id="tab-settings" onclick="switchTab('settings')">👤 Technik</button>
+</div>
+
+<!-- FORM SCREEN -->
+<div id="screen-form" class="screen active">
+
+  <!-- Zákazník -->
+  <div style="height:12px"></div>
+  <div class="card">
+    <div class="card-header">Zákazník</div>
+    <div class="card-body">
+      <div class="field-row">
+        <div class="field" style="flex:2">
+          <label>Zákazník</label>
+          <input type="text" id="f-zakaznik" placeholder="Jméno / firma" autocomplete="off">
+        </div>
+        <div class="field" style="flex:1">
+          <label>Číslo TT / ACR</label>
+          <input type="text" id="f-tt" placeholder="TT-001" autocomplete="off">
+        </div>
+      </div>
+      <div class="field">
+        <label>Adresa</label>
+        <input type="text" id="f-adresa" placeholder="Ulice, město" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Datum výjezdu</label>
+        <input type="date" id="f-datum">
+      </div>
+    </div>
+  </div>
+
+  <!-- Typ úkonu -->
+  <div class="card">
+    <div class="card-header">Typ úkonu</div>
+    <div class="card-body">
+      <div class="typ-ukonu">
+        <button class="typ-btn" id="typ-servis" onclick="setTyp('Servis')">Servis</button>
+        <button class="typ-btn" id="typ-demontaz" onclick="setTyp('Demontáž')">Demontáž</button>
+        <button class="typ-btn" id="typ-jine" onclick="setTyp('Jiné')">Jiné</button>
+      </div>
+      <div class="field jine-text" id="jine-text-field">
+        <label>Upřesnění</label>
+        <input type="text" id="f-jine-text" placeholder="Popis úkonu...">
+      </div>
+    </div>
+  </div>
+
+  <!-- Zařízení -->
+  <div class="card">
+    <div class="card-header">Typ zařízení a SN / IMEI</div>
+    <div class="card-body">
+      <table class="zarizeni-table" id="zarizeni-table">
+        <thead>
+          <tr>
+            <th style="width:36%">Typ zařízení</th>
+            <th style="width:28%">SN/IMEI inst.</th>
+            <th style="width:28%">SN/IMEI dem.</th>
+            <th style="width:8%"></th>
+          </tr>
+        </thead>
+        <tbody id="zarizeni-body">
+        </tbody>
+      </table>
+      <button class="add-row-btn" onclick="addZarizeniRow()">＋ Přidat řádek</button>
+    </div>
+  </div>
+
+  <!-- Popis práce -->
+  <div class="card">
+    <div class="card-header">Popis práce na lokalitě</div>
+    <div class="card-body">
+      <div class="field">
+        <textarea id="f-popis" placeholder="Popis provedených prací..." rows="5"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ostatní -->
+  <div class="card">
+    <div class="card-header">Ostatní</div>
+    <div class="card-body">
+      <div class="field">
+        <textarea id="f-ostatni" placeholder="Marný výjezd, poznámka zákazníka..." rows="3"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Podpis zákazníka -->
+  <div class="card">
+    <div class="card-header">Podpis zákazníka</div>
+    <div class="card-body">
+      <div class="canvas-wrap">
+        <canvas id="canvas-zakaznik" height="160"></canvas>
+        <div class="canvas-label" id="hint-zakaznik">Podepište se prstem</div>
+      </div>
+      <div class="field" style="margin-top:10px">
+        <label>Jméno zákazníka</label>
+        <input type="text" id="f-jmeno-zakaznik" placeholder="Jméno zákazníka" autocomplete="off">
+      </div>
+      <div class="sig-btns">
+        <button class="sig-btn danger" onclick="clearCanvas('canvas-zakaznik','hint-zakaznik')">🗑 Smazat podpis</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Podpis technika -->
+  <div class="card">
+    <div class="card-header">Podpis technika</div>
+    <div class="card-body">
+      <div class="field">
+        <label>Jméno technika</label>
+        <input type="text" id="f-jmeno-technik" placeholder="Jméno technika" autocomplete="off">
+      </div>
+      <div id="technik-sig-from-settings" style="display:none">
+        <div style="font-size:12px;color:var(--blue);margin-bottom:6px;font-weight:700;">ULOŽENÝ PODPIS TECHNIKA</div>
+        <div class="saved-sig-preview" id="technik-preview-form">
+          <span class="no-sig">Načítám...</span>
+        </div>
+        <button class="sig-btn" style="width:100%" onclick="switchTab('settings')">✏ Změnit podpis v Nastavení</button>
+      </div>
+      <div id="technik-sig-draw">
+        <div class="canvas-wrap">
+          <canvas id="canvas-technik" height="130"></canvas>
+          <div class="canvas-label" id="hint-technik">Podepište se prstem</div>
+        </div>
+        <div class="sig-btns">
+          <button class="sig-btn danger" onclick="clearCanvas('canvas-technik','hint-technik')">🗑 Smazat</button>
+          <button class="sig-btn primary" onclick="saveTechnikSig()">💾 Uložit jako výchozí</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:80px"></div>
+</div>
+
+<!-- SETTINGS SCREEN -->
+<div id="screen-settings" class="screen">
+  <div style="height:12px"></div>
+  <div class="card">
+    <div class="card-header">Podpis technika</div>
+    <div class="card-body">
+      <div class="settings-info">
+        Podpis uložený zde se automaticky doplní do každého protokolu. Stačí ho vytvořit jednou.
+      </div>
+      <div style="font-size:12px;color:var(--blue);margin-bottom:6px;font-weight:700;">ULOŽENÝ PODPIS</div>
+      <div class="saved-sig-preview" id="settings-sig-preview">
+        <span class="no-sig">Podpis není uložen</span>
+      </div>
+      <div style="font-size:12px;color:var(--blue);margin:12px 0 6px;font-weight:700;">NAKRESLIT NOVÝ PODPIS</div>
+      <div class="canvas-wrap">
+        <canvas id="canvas-settings" height="150"></canvas>
+        <div class="canvas-label" id="hint-settings">Podepište se prstem</div>
+      </div>
+      <div class="sig-btns" style="margin-top:8px">
+        <button class="sig-btn danger" onclick="clearCanvas('canvas-settings','hint-settings')">🗑 Smazat</button>
+        <button class="sig-btn primary" onclick="saveSettingsSig()">💾 Uložit podpis</button>
+      </div>
+      <button class="sig-btn danger" style="width:100%;margin-top:8px" onclick="deleteSavedSig()">🗑 Odstranit uložený podpis</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Nastavení připojení</div>
+    <div class="card-body">
+      <div class="settings-info">
+        Po nasazení Apps Script vložte sem jeho URL. Uloží se do paměti telefonu.
+      </div>
+      <div class="field">
+        <label>Apps Script URL</label>
+        <input type="url" id="apps-script-url" placeholder="https://script.google.com/macros/s/..." autocomplete="off" style="font-size:12px;">
+      </div>
+      <button class="sig-btn primary" style="width:100%" onclick="saveAppsScriptUrl()">💾 Uložit URL</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Informace o aplikaci</div>
+    <div class="card-body" style="font-size:13px;line-height:1.7;color:#555">
+      <strong style="color:var(--blue)">SUPTel – Předávací protokol</strong><br>
+      Mobilní aplikace pro techniky.<br><br>
+      PDF se generuje z Google Sheets šablony – funguje kdekoliv na mobilních datech.<br><br>
+      Podpis technika se uloží do paměti telefonu a doplní se do každého protokolu.
+    </div>
+  </div>
+  <div style="height:20px"></div>
+</div>
+
+<!-- ACTION BAR -->
+<div class="action-bar">
+  <button class="btn-main btn-generate" onclick="generatePDF()">📄 Vygenerovat PDF</button>
+  <button class="btn-main btn-reset" onclick="confirmReset()" title="Nový protokol">🔄</button>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let selectedTyp = '';
+let sigDrawing = {};  // canvasId -> { drawing, lastX, lastY }
+const LOGO_B64 = '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';
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  setTodayDate();
+  initCanvas('canvas-zakaznik', 'hint-zakaznik');
+  initCanvas('canvas-technik', 'hint-technik');
+  initCanvas('canvas-settings', 'hint-settings');
+  addZarizeniRow();
+  addZarizeniRow();
+  addZarizeniRow();
+  loadSavedTechnikSig();
+  resizeAllCanvases();
+  // Load saved Apps Script URL into input field
+  const savedUrl = localStorage.getItem('suptel_apps_script_url');
+  if (savedUrl) {
+    const inp = document.getElementById('apps-script-url');
+    if (inp) inp.value = savedUrl;
+  }
+});
+
+window.addEventListener('resize', resizeAllCanvases);
+
+function resizeAllCanvases() {
+  ['canvas-zakaznik','canvas-technik','canvas-settings'].forEach(id => {
+    const canvas = document.getElementById(id);
+    if (!canvas) return;
+    // Spočítat šířku i pro skryté elementy (přes parentElement)
+    const w = canvas.offsetWidth || canvas.parentElement?.offsetWidth
+             || canvas.parentElement?.parentElement?.offsetWidth || 300;
+    if (w < 10) return; // ještě není viditelný, přeskočit
+    const saved = canvas._sigData;
+    canvas.width = w;
+    if (saved) {
+      const img = new Image();
+      img.onload = () => canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      img.src = saved;
+    }
+  });
+}
+
+function setTodayDate() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  document.getElementById('f-datum').value = `${y}-${m}-${day}`;
+}
+
+// ═══════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`screen-${tab}`).classList.add('active');
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  // Vždy resize canvasů po přepnutí tabu (canvas může mít width=0 pokud byl skrytý)
+  setTimeout(() => {
+    resizeAllCanvases();
+    if (tab === 'settings') loadSavedTechnikSig();
+  }, 50);
+}
+
+function showSettings() { switchTab('settings'); }
+
+// ═══════════════════════════════════════════
+// TYP ÚKONU
+// ═══════════════════════════════════════════
+function setTyp(typ) {
+  selectedTyp = typ;
+  ['Servis','Demontáž','Jiné'].forEach(t => {
+    const id = 'typ-' + t.toLowerCase().replace('á','a').replace('ž','z');
+    document.getElementById(id)?.classList.toggle('active', t === typ);
+  });
+  document.getElementById('jine-text-field').classList.toggle('visible', typ === 'Jiné');
+}
+
+// ═══════════════════════════════════════════
+// ZAŘÍZENÍ TABLE
+// ═══════════════════════════════════════════
+function addZarizeniRow() {
+  const tbody = document.getElementById('zarizeni-body');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" placeholder="Typ zařízení" autocomplete="off"></td>
+    <td><input type="text" placeholder="SN/IMEI" autocomplete="off"></td>
+    <td><input type="text" placeholder="SN/IMEI" autocomplete="off"></td>
+    <td><button class="del-row-btn" onclick="this.closest('tr').remove()">×</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function getZarizeniData() {
+  const rows = [];
+  document.querySelectorAll('#zarizeni-body tr').forEach(tr => {
+    const inputs = tr.querySelectorAll('input');
+    rows.push({
+      typ: inputs[0].value.trim(),
+      snInst: inputs[1].value.trim(),
+      snDem: inputs[2].value.trim()
+    });
+  });
+  return rows.filter(r => r.typ || r.snInst || r.snDem);
+}
+
+// ═══════════════════════════════════════════
+// CANVAS SIGNATURE
+// ═══════════════════════════════════════════
+function initCanvas(canvasId, hintId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  canvas.width = canvas.offsetWidth;
+  const ctx = canvas.getContext('2d');
+  let drawing = false, lastX = 0, lastY = 0;
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches ? e.touches[0] : e;
+    return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+  }
+
+  function startDraw(e) {
+    e.preventDefault();
+    drawing = true;
+    const p = getPos(e);
+    lastX = p.x; lastY = p.y;
+    document.getElementById(hintId).style.display = 'none';
+  }
+
+  function draw(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    const p = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(p.x, p.y);
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    lastX = p.x; lastY = p.y;
+  }
+
+  function endDraw() { drawing = false; }
+
+  canvas.addEventListener('mousedown', startDraw);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', endDraw);
+  canvas.addEventListener('touchstart', startDraw, { passive: false });
+  canvas.addEventListener('touchmove', draw, { passive: false });
+  canvas.addEventListener('touchend', endDraw);
+}
+
+function ensureCanvasSize(canvas) {
+  if (!canvas) return;
+  if (!canvas.width || canvas.width < 10) {
+    const w = canvas.offsetWidth
+           || canvas.parentElement?.offsetWidth
+           || canvas.parentElement?.parentElement?.offsetWidth
+           || 300;
+    if (w >= 10) canvas.width = w;
+  }
+}
+
+function isCanvasEmpty(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return true;
+  ensureCanvasSize(canvas);
+  if (!canvas.width || !canvas.height) return true;
+  try {
+    const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+    for (let i = 3; i < data.length; i += 4) { if (data[i] > 0) return false; }
+    return true;
+  } catch (e) { return true; }
+}
+
+function clearCanvas(canvasId, hintId) {
+  const canvas = document.getElementById(canvasId);
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  canvas._sigData = null;
+  document.getElementById(hintId).style.display = '';
+}
+
+function getCanvasDataURL(canvasId) {
+  if (isCanvasEmpty(canvasId)) return null;
+  return document.getElementById(canvasId).toDataURL('image/png');
+}
+
+// ═══════════════════════════════════════════
+// TECHNIK SIGNATURE SAVE/LOAD
+// ═══════════════════════════════════════════
+function saveTechnikSig() {
+  const data = getCanvasDataURL('canvas-technik');
+  if (!data) { showToast('Nejprve se podepište'); return; }
+  localStorage.setItem('suptel_technik_sig', data);
+  showToast('Podpis technika uložen');
+  loadSavedTechnikSig();
+}
+
+function saveSettingsSig() {
+  const data = getCanvasDataURL('canvas-settings');
+  if (!data) { showToast('Nejprve nakreslete podpis'); return; }
+  localStorage.setItem('suptel_technik_sig', data);
+  showToast('Podpis uložen');
+  loadSavedTechnikSig();
+  clearCanvas('canvas-settings', 'hint-settings');
+}
+
+function deleteSavedSig() {
+  if (!confirm('Opravdu odstranit uložený podpis?')) return;
+  localStorage.removeItem('suptel_technik_sig');
+  loadSavedTechnikSig();
+  showToast('Podpis odstraněn');
+}
+
+function loadSavedTechnikSig() {
+  const saved = localStorage.getItem('suptel_technik_sig');
+
+  // Settings preview
+  const sp = document.getElementById('settings-sig-preview');
+  if (sp) {
+    if (saved) {
+      sp.innerHTML = `<img src="${saved}" alt="Podpis technika">`;
+    } else {
+      sp.innerHTML = '<span class="no-sig">Podpis není uložen</span>';
+    }
+  }
+
+  // Form preview
+  const fp = document.getElementById('technik-preview-form');
+  if (saved) {
+    document.getElementById('technik-sig-from-settings').style.display = 'block';
+    document.getElementById('technik-sig-draw').style.display = 'none';
+    if (fp) fp.innerHTML = `<img src="${saved}" alt="Podpis technika">`;
+  } else {
+    document.getElementById('technik-sig-from-settings').style.display = 'none';
+    document.getElementById('technik-sig-draw').style.display = 'block';
+  }
+}
+
+// ═══════════════════════════════════════════
+// RESET
+// ═══════════════════════════════════════════
+function confirmReset() {
+  if (!confirm('Smazat formulář a začít nový protokol?')) return;
+  document.getElementById('f-zakaznik').value = '';
+  document.getElementById('f-tt').value = '';
+  document.getElementById('f-adresa').value = '';
+  document.getElementById('f-popis').value = '';
+  document.getElementById('f-ostatni').value = '';
+  document.getElementById('f-jmeno-zakaznik').value = '';
+  document.getElementById('f-jmeno-technik').value = '';
+  document.getElementById('f-jine-text').value = '';
+  setTodayDate();
+  selectedTyp = '';
+  ['typ-servis','typ-demontaz','typ-jine'].forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById('jine-text-field').classList.remove('visible');
+  document.getElementById('zarizeni-body').innerHTML = '';
+  addZarizeniRow(); addZarizeniRow(); addZarizeniRow();
+  clearCanvas('canvas-zakaznik','hint-zakaznik');
+  clearCanvas('canvas-technik','hint-technik');
+  showToast('Formulář byl vymazán');
+  switchTab('form');
+  window.scrollTo(0,0);
+}
+
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ═══════════════════════════════════════════
+// FORMAT DATE
+// ═══════════════════════════════════════════
+function formatDate(val) {
+  if (!val) return '';
+  const [y,m,d] = val.split('-');
+  return `${d}.${m}.${y}`;
+}
+
+// ═══════════════════════════════════════════
+// KONFIGURACE – sem vložte URL z Apps Script
+// ═══════════════════════════════════════════
+let APPS_SCRIPT_URL = localStorage.getItem('suptel_apps_script_url') || 'VLOŽTE_SEM_URL_Z_APPS_SCRIPT';
+
+function saveAppsScriptUrl() {
+  const url = document.getElementById('apps-script-url').value.trim();
+  if (!url || !url.startsWith('https://script.google.com/')) {
+    showToast('⚠️ Zadejte platnou Apps Script URL');
+    return;
+  }
+  APPS_SCRIPT_URL = url;
+  localStorage.setItem('suptel_apps_script_url', url);
+  showToast('✅ URL uložena');
+}
+
+// ═══════════════════════════════════════════
+// PDF GENERATION – přes Google Apps Script
+// ═══════════════════════════════════════════
+async function generatePDF() {
+  if (APPS_SCRIPT_URL === 'VLOŽTE_SEM_URL_Z_APPS_SCRIPT') {
+    showToast('⚠️ Nejprve nastavte URL Apps Script v záložce Technik');
+    return;
+  }
+
+  const btn = document.querySelector('.btn-generate');
+  btn.textContent = '⏳ Generuji PDF…';
+  btn.disabled = true;
+
+  try {
+    // Sestavit data – zajisti správnou velikost canvasů před čtením
+    resizeAllCanvases();
+    ['canvas-zakaznik','canvas-technik'].forEach(id => {
+      const cv = document.getElementById(id);
+      if (cv) ensureCanvasSize(cv);
+    });
+    const sigZak   = isCanvasEmpty('canvas-zakaznik') ? null
+                   : document.getElementById('canvas-zakaznik').toDataURL('image/png');
+    const savedSig = localStorage.getItem('suptel_technik_sig');
+    const sigTech  = savedSig || (isCanvasEmpty('canvas-technik') ? null
+                   : document.getElementById('canvas-technik').toDataURL('image/png'));
+
+    const payload = {
+      zakaznik:      document.getElementById('f-zakaznik').value.trim(),
+      tt:            document.getElementById('f-tt').value.trim(),
+      adresa:        document.getElementById('f-adresa').value.trim(),
+      datum:         formatDate(document.getElementById('f-datum').value),
+      typUkonu:      selectedTyp,
+      jineText:      document.getElementById('f-jine-text').value.trim(),
+      zarizeni:      getZarizeniData(),
+      popis:         document.getElementById('f-popis').value.trim(),
+      ostatni:       document.getElementById('f-ostatni').value.trim(),
+      jmenoZakaznik: document.getElementById('f-jmeno-zakaznik').value.trim(),
+      jmenoTechnik:  document.getElementById('f-jmeno-technik').value.trim(),
+      sigZakaznik:   sigZak,
+      sigTechnik:    sigTech,
+    };
+
+    // Volání Apps Script
+    // Content-Type musí být text/plain kvůli CORS preflight omezením Apps Script
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+      redirect: 'follow',
+    });
+
+    // Přečíst jako text – pak parsovat (ochrana před HTML error stránkou)
+    const text = await resp.text();
+    let result;
+    try {
+      result = JSON.parse(text);
+    } catch (_) {
+      throw new Error('Neplatná odpověď serveru. Zkontrolujte URL Apps Script.');
+    }
+    if (result.error) throw new Error(result.error);
+    if (!result.pdf)  throw new Error('Server nevrátil PDF data.');
+
+    // Dekódovat PDF
+    const pdfBytes = Uint8Array.from(atob(result.pdf), c => c.charCodeAt(0));
+    const pdfBlob  = new Blob([pdfBytes], { type: 'application/pdf' });
+    const fileName = result.filename || 'SUPTel_protokol.pdf';
+
+    // Uložit blob URL pro případný ruční download
+    const objectUrl = URL.createObjectURL(pdfBlob);
+
+    // Zobrazit dialog – Share API nebo vlastní modal
+    await showPdfDialog(pdfBlob, fileName, objectUrl);
+
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+
+  } catch (err) {
+    console.error(err);
+    showToast('❌ ' + err.message);
+  } finally {
+    btn.textContent = '📄 Vygenerovat PDF';
+    btn.disabled = false;
+  }
+}
+
+// Zobrazí PDF dialog s možností sdílet nebo otevřít
+async function showPdfDialog(pdfBlob, fileName, objectUrl) {
+  // Pokus o Web Share API (nativní dialog – WhatsApp, email atd.)
+  const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+  const canShareFile = navigator.share && navigator.canShare && navigator.canShare({ files: [file] });
+
+  if (canShareFile) {
+    try {
+      await navigator.share({ title: 'SUPTel – Předávací protokol', files: [file] });
+      return; // úspěch
+    } catch (e) {
+      if (e.name === 'AbortError') return; // uživatel zavřel dialog – OK
+      // Jiná chyba → padni na modal
+    }
+  }
+
+  // Fallback: vlastní modal s tlačítky
+  showPdfModal(objectUrl, fileName);
+}
+
+function showPdfModal(objectUrl, fileName) {
+  // Odstraň případný starý modal
+  document.getElementById('pdf-modal')?.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'pdf-modal';
+  modal.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;
+    display:flex;align-items:flex-end;justify-content:center;
+  `;
+  modal.innerHTML = `
+    <div style="background:white;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:500px;text-align:center;">
+      <div style="font-size:48px;margin-bottom:8px;">📄</div>
+      <div style="font-weight:700;font-size:16px;color:#004288;margin-bottom:6px;">PDF je připraveno</div>
+      <div style="font-size:12px;color:#888;margin-bottom:20px;">${fileName}</div>
+      <a href="${objectUrl}" download="${fileName}"
+         style="display:block;background:#004288;color:white;padding:14px;border-radius:10px;
+                font-weight:700;font-size:16px;text-decoration:none;margin-bottom:10px;">
+        ⬇ Stáhnout PDF
+      </a>
+      <a href="${objectUrl}" target="_blank"
+         style="display:block;background:#e8f0f8;color:#004288;padding:14px;border-radius:10px;
+                font-weight:700;font-size:16px;text-decoration:none;margin-bottom:10px;">
+        👁 Otevřít v prohlížeči
+      </a>
+      <button onclick="document.getElementById('pdf-modal').remove()"
+              style="background:none;border:none;color:#888;font-size:14px;padding:10px;cursor:pointer;">
+        Zavřít
+      </button>
+    </div>
+  `;
+  // Zavřít kliknutím na pozadí
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+</script>
+</body>
+</html>
