@@ -951,50 +951,49 @@ async function generatePDF() {
 }
 
 
-// Přidá checkmark + podpisy přímo do PDF (klientsky, bez serveru)
-// Checkboxy změřeny z pipeline_test.pdf: Servis x=251.3, Demontáž x=332.9, Jiné x=400.1, yb=621.1
+// Přidá checkmark + podpisy přímo do PDF (klientsky, pdf-lib)
+// Souřadnice checkboxů a podpisů přesně změřeny z PDF vygenerovaného ze šablony s placeholdery.
+// Zákazník: placeholder x=216.1 yb=149.4 w=163.2 h=33 | Technik: yb=105.2
 const CHECKBOX_POSITIONS = {
   'Servis':   { x: 251.3, yb: 621.1, w: 9.4, h: 9.5 },
   'Demontáž': { x: 332.9, yb: 621.1, w: 9.4, h: 9.5 },
   'Jiné':     { x: 400.1, yb: 621.1, w: 9.4, h: 9.5 },
 };
+const SIG_POSITIONS = [
+  { key: 'zak',  x: 216.1, yb: 149.4, w: 163.2, h: 33.0 },
+  { key: 'tech', x: 216.1, yb: 105.2, w: 163.2, h: 33.0 },
+];
 
 async function stampSignatures(pdfBytes, sigZakB64, sigTechB64, typUkonu) {
   if (!sigZakB64 && !sigTechB64 && !typUkonu) return pdfBytes;
   if (typeof PDFLib === 'undefined') return pdfBytes;
-
   try {
     const { PDFDocument, rgb } = PDFLib;
     const pdfDoc = await PDFDocument.load(pdfBytes);
     const page   = pdfDoc.getPages()[0];
 
-    // 1. Checkmark – nakreslení fajfky do správného checkboxu
+    // 1. Checkmark – fajfka do správného checkboxu
     const cb = CHECKBOX_POSITIONS[typUkonu];
     if (cb) {
       const { x, yb: y, w, h } = cb;
-      const drawOpts = { thickness: 1.6, color: rgb(0, 0, 0) };
-      page.drawLine({ start: { x: x+1.5,      y: y+h*0.42 }, end: { x: x+w*0.38, y: y+1.3  }, ...drawOpts });
-      page.drawLine({ start: { x: x+w*0.38,   y: y+1.3   }, end: { x: x+w-1.2,  y: y+h-1.5 }, ...drawOpts });
+      const o = { thickness: 1.6, color: rgb(0, 0, 0) };
+      page.drawLine({ start:{x:x+1.5, y:y+h*0.42}, end:{x:x+w*0.38, y:y+1.3}, ...o });
+      page.drawLine({ start:{x:x+w*0.38, y:y+1.3}, end:{x:x+w-1.2, y:y+h-1.5}, ...o });
     }
 
-    // 2. Podpisy – měřeno z pipeline_test.pdf:
-    //   Zákazník: yb=162, h=35 → ytop=645-680 (nad "Podpis zákazníka:" ytop=681)
-    //   Technik:  yb=127, h=34 → ytop=681-715 (nad "Podpis technika:"  ytop=725)
-    const sigPositions = [
-      { b64: sigZakB64,  x: 217, yb: 165, w: 163, h: 35 },
-      { b64: sigTechB64, x: 217, yb: 127, w: 163, h: 34 },
-    ];
-
-    for (const pos of sigPositions) {
-      if (!pos.b64) continue;
+    // 2. Podpisy – přepsat placeholder obrázky skutečnými podpisy
+    const sigs = { zak: sigZakB64, tech: sigTechB64 };
+    for (const pos of SIG_POSITIONS) {
+      const b64 = sigs[pos.key];
+      if (!b64) continue;
       try {
-        const b64data = pos.b64.includes(',') ? pos.b64.split(',')[1] : pos.b64;
-        const imgBytes = Uint8Array.from(atob(b64data), ch => ch.charCodeAt(0));
-        const img = await pdfDoc.embedPng(imgBytes);
-        page.drawImage(img, { x: pos.x, y: pos.yb, width: pos.w, height: pos.h, opacity: 0.95 });
-      } catch (imgErr) {
-        console.warn('Signature embed error:', imgErr);
-      }
+        // Bílý obdélník přes placeholder
+        page.drawRectangle({ x:pos.x-1, y:pos.yb-1, width:pos.w+2, height:pos.h+2, color:rgb(1,1,1) });
+        // Skutečný podpis
+        const raw = b64.includes(',') ? b64.split(',')[1] : b64;
+        const img = await pdfDoc.embedPng(Uint8Array.from(atob(raw), c => c.charCodeAt(0)));
+        page.drawImage(img, { x:pos.x, y:pos.yb, width:pos.w, height:pos.h, opacity:0.95 });
+      } catch (e) { console.warn('sig embed error:', e); }
     }
 
     return await pdfDoc.save();
